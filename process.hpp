@@ -6,7 +6,6 @@
 #include <string_view>
 #include <unordered_map>
 
-//typedefs so we don't have to include any winapi headers here
 using SYSTEM_PROCESS_INFORMATION = struct _SYSTEM_PROCESS_INFORMATION;
 using HANDLE = void*;
 
@@ -37,8 +36,8 @@ class process
 	HANDLE	  handle;
 	uintptr_t pid;
 
-	std::vector<uintptr_t> allocation_list;
-	std::vector<thread_data> thread_list;
+	std::vector<uintptr_t>		allocation_list;
+	std::vector<thread_data>	thread_list;
 	std::unordered_map<std::wstring, module_data> module_list;
 	
 	process(HANDLE handle, uintptr_t pid, std::vector<thread_data> thread_list, std::unordered_map<std::wstring, module_data> module_list);
@@ -57,37 +56,37 @@ public:
 
 	~process();
 
-	static std::optional<process>	from_pid(uintptr_t pid);
-	static std::optional<process>	from_name(std::wstring_view name);
-	static std::vector<process>		get_process_list();
+	[[nodiscard]] static std::optional<process>	from_pid(uintptr_t pid);
+	[[nodiscard]] static std::optional<process>	from_name(std::wstring_view name);
+	[[nodiscard]] static std::vector<process> get_process_list();
 	
-	bool raw_read(uintptr_t address, size_t size, void* buffer) const;
-	bool raw_write(uintptr_t address, size_t size, const void* buffer) const;
+	[[nodiscard]] bool raw_read(uintptr_t address, size_t size, void* buffer) const;
+	[[nodiscard]] bool raw_write(uintptr_t address, size_t size, const void* buffer) const;
 
-	std::optional<module_data> get_module(const std::wstring& name) const;
-	const std::wstring& get_executable_name() const;
+	[[nodiscard]] std::optional<module_data> get_module(std::wstring name) const;
+	[[nodiscard]] const std::wstring& get_executable_name() const;
 
-	uintptr_t get_process_id() const;
-	HANDLE get_process_handle() const;
+	[[nodiscard]] uintptr_t get_process_id() const;
+	[[nodiscard]] HANDLE get_process_handle() const;
 
-	uintptr_t find_pattern(const std::wstring& module_name, std::string_view pattern) const;
+	[[nodiscard]] uintptr_t find_pattern(const std::wstring& module_name, std::string_view pattern) const;
 
-	uint32_t adjust_protection(uintptr_t address, size_t size, uint32_t new_protection) const;
+	[[nodiscard]] uint32_t adjust_protection(uintptr_t address, size_t size, uint32_t new_protection) const;
 	uint32_t execute_code(uintptr_t address, uintptr_t argument, bool wait = false) const;
 
-	uintptr_t allocate(size_t size, uint32_t protection);
+	[[nodiscard]] uintptr_t allocate(size_t size, uint32_t protection);
 	void free(uintptr_t address);
 
-	const std::vector<thread_data>& get_thread_list() const;
-	const std::unordered_map<std::wstring, module_data>& get_module_list() const;
+	[[nodiscard]] const std::vector<thread_data>& get_thread_list() const;
+	[[nodiscard]] const std::unordered_map<std::wstring, module_data>& get_module_list() const;
 
 	template <typename T>
-	T read(const uintptr_t address) const
+	[[nodiscard]] T read(const uintptr_t address) const
 	{
 		T buffer{};
 		const auto result = raw_read(address, sizeof(T), &buffer);
 		if (!result)
-			throw std::exception("reading failed.");
+			throw std::runtime_error{"reading failed."};
 
 		return buffer;
 	}
@@ -97,6 +96,6 @@ public:
 	{
 		const auto result = raw_write(address, sizeof(T), &buffer);
 		if (!result)
-			throw std::exception("writing failed.");
+			throw std::runtime_error{"writing failed."};
 	}
 };
