@@ -48,8 +48,8 @@ class process
 public:
 	process() = delete;
 
-	process(const process&) = delete;
-	process& operator=(const process&) = delete;
+	process(const process& process);
+	process& operator=(const process& process) = delete;
 
 	process(process&& process) noexcept;
 	process& operator=(process&& process) noexcept;

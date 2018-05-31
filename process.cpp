@@ -120,6 +120,31 @@ std::optional<process> process::from_process_information(SYSTEM_PROCESS_INFORMAT
 	return std::make_optional(process(handle, pid, threads, modules));
 }
 
+process::process(const process& process)
+{
+	module_list		= process.module_list;
+	pid				= process.pid;
+	handle			= INVALID_HANDLE_VALUE;
+
+	if (!DuplicateHandle(GetCurrentProcess(), process.handle, GetCurrentProcess(), &handle, 0, false, DUPLICATE_SAME_ACCESS))
+		util::throw_last_winapi_error();
+
+	for (const auto& thread : process.thread_list)
+	{
+		HANDLE new_handle = thread.handle;
+
+		if (util::is_valid(thread.handle))
+		{
+			new_handle = INVALID_HANDLE_VALUE;
+
+			if (!DuplicateHandle(GetCurrentProcess(), thread.handle, GetCurrentProcess(), &new_handle, 0, false, DUPLICATE_SAME_ACCESS))
+				util::throw_last_winapi_error();
+		}
+
+		thread_list.emplace_back(thread.id, new_handle);
+	}
+}
+
 process& process::operator=(process&& process) noexcept
 {
 	if (this == &process)
