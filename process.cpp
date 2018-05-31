@@ -7,9 +7,9 @@
 #undef WIN32_NO_STATUS
 
 #include <ntstatus.h>
-#include <cassert>
-#include <Psapi.h>
 #include <winternl.h>
+#include <Psapi.h>
+#include <cassert>
 #include <cstdint>
 #include <vector>
 
