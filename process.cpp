@@ -15,9 +15,12 @@
 
 #pragma comment(lib, "ntdll.lib")
 
-extern "C" __declspec(dllimport) BOOLEAN WINAPI RtlEqualUnicodeString(PUNICODE_STRING, PUNICODE_STRING, BOOLEAN);
-extern "C" __declspec(dllimport) NTSTATUS NTAPI NtReadVirtualMemory(HANDLE, PVOID, PVOID, SIZE_T, PULONG);
-extern "C" __declspec(dllimport) NTSTATUS NTAPI NtWriteVirtualMemory(HANDLE, PVOID, PVOID, SIZE_T, PULONG);
+namespace nt
+{
+	extern "C" BOOLEAN WINAPI RtlEqualUnicodeString(PUNICODE_STRING, PUNICODE_STRING, BOOLEAN);
+	extern "C" NTSTATUS NTAPI NtReadVirtualMemory(HANDLE, PVOID, PVOID, SIZE_T, PULONG);
+	extern "C" NTSTATUS NTAPI NtWriteVirtualMemory(HANDLE, PVOID, PVOID, SIZE_T, PULONG);
+}
 
 __forceinline SYSTEM_PROCESS_INFORMATION* next(const SYSTEM_PROCESS_INFORMATION* current)
 {
@@ -170,7 +173,7 @@ std::optional<process> process::from_name(const std::wstring_view name)
 
 		for (auto current = process_information; current->NextEntryOffset != 0; current = next(current))
 		{
-			if (RtlEqualUnicodeString(&current->ImageName, &process_name, true))
+			if (nt::RtlEqualUnicodeString(&current->ImageName, &process_name, true))
 			{
 				auto result = from_process_information(current);
 				if (result.has_value())
@@ -211,7 +214,7 @@ bool process::raw_read(const uintptr_t address, const size_t size, void* buffer)
 		return false;
 
 	size_t bytes_read{};
-	const auto result = NtReadVirtualMemory(handle, reinterpret_cast<void*>(address), buffer, size, reinterpret_cast<ULONG*>(&bytes_read));
+	const auto result = nt::NtReadVirtualMemory(handle, reinterpret_cast<void*>(address), buffer, size, reinterpret_cast<ULONG*>(&bytes_read));
 
 	return NT_SUCCESS(result) && bytes_read == size;
 }
@@ -222,7 +225,7 @@ bool process::raw_write(const uintptr_t address, const size_t size, const void* 
 		return false;
 
 	size_t bytes_written{};
-	const auto result = NtWriteVirtualMemory(handle, reinterpret_cast<void*>(address), const_cast<void*>(buffer), size, reinterpret_cast<ULONG*>(&bytes_written));
+	const auto result = nt::NtWriteVirtualMemory(handle, reinterpret_cast<void*>(address), const_cast<void*>(buffer), size, reinterpret_cast<ULONG*>(&bytes_written));
 
 	return NT_SUCCESS(result) && bytes_written == size;
 }
