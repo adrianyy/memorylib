@@ -22,20 +22,23 @@ namespace nt
 	extern "C" NTSTATUS NTAPI NtWriteVirtualMemory(HANDLE, PVOID, PVOID, SIZE_T, PULONG);
 }
 
-__forceinline SYSTEM_PROCESS_INFORMATION* next(const SYSTEM_PROCESS_INFORMATION* current)
+namespace util
 {
-	return reinterpret_cast<SYSTEM_PROCESS_INFORMATION*>(uintptr_t(current) + current->NextEntryOffset);
-}
+	__forceinline SYSTEM_PROCESS_INFORMATION* next(const SYSTEM_PROCESS_INFORMATION* current)
+	{
+		return reinterpret_cast<SYSTEM_PROCESS_INFORMATION*>(uintptr_t(current) + current->NextEntryOffset);
+	}
 
-__forceinline bool is_valid(const HANDLE handle)
-{
-	return handle && handle != INVALID_HANDLE_VALUE;
+	__forceinline bool is_valid(const HANDLE handle)
+	{
+		return handle && handle != INVALID_HANDLE_VALUE;
+	}
 }
 
 process::process(const HANDLE handle, const uintptr_t pid, std::vector<thread_data> thread_list, std::unordered_map<std::wstring, module_data> module_list) :
 	handle(handle), pid(pid), thread_list(std::move(thread_list)), module_list(std::move(module_list))
 {
-	assert(pid && is_valid(handle));
+	assert(pid && util::is_valid(handle));
 }
 
 std::unique_ptr<SYSTEM_PROCESS_INFORMATION> process::get_system_process_information()
@@ -63,7 +66,7 @@ std::optional<process> process::from_process_information(SYSTEM_PROCESS_INFORMAT
 	const auto pid =	 reinterpret_cast<uintptr_t>(process_information->UniqueProcessId);
 	const auto handle	= OpenProcess(PROCESS_ALL_ACCESS, false, pid);
 
-	if (!is_valid(handle))
+	if (!util::is_valid(handle))
 		return std::nullopt;
 
 	HMODULE found_modules[2048];
@@ -128,7 +131,7 @@ process::process(process&& process) noexcept
 
 process::~process()
 {
-	if (is_valid(handle))
+	if (util::is_valid(handle))
 	{
 		for (const auto address : allocation_list)
 			VirtualFreeEx(handle, reinterpret_cast<void*>(address), 0, MEM_RELEASE);
@@ -136,7 +139,7 @@ process::~process()
 		for (const auto thread : thread_list)
 		{
 			const auto thread_handle = thread.handle;
-			if (is_valid(thread_handle))
+			if (util::is_valid(thread_handle))
 				CloseHandle(thread_handle);
 		}
 
@@ -151,7 +154,7 @@ std::optional<process> process::from_pid(const uintptr_t pid)
 
 	if (process_information)
 	{
-		for (auto current = process_information; current->NextEntryOffset != 0; current = next(current))
+		for (auto current = process_information; current->NextEntryOffset != 0; current = util::next(current))
 		{
 			if (reinterpret_cast<uintptr_t>(current->UniqueProcessId) == pid)
 				return from_process_information(current);
@@ -171,7 +174,7 @@ std::optional<process> process::from_name(const std::wstring_view name)
 		UNICODE_STRING process_name{};
 		RtlInitUnicodeString(&process_name, name.data());
 
-		for (auto current = process_information; current->NextEntryOffset != 0; current = next(current))
+		for (auto current = process_information; current->NextEntryOffset != 0; current = util::next(current))
 		{
 			if (nt::RtlEqualUnicodeString(&current->ImageName, &process_name, true))
 			{
@@ -194,7 +197,7 @@ std::vector<process> process::get_process_list()
 
 	if (process_information)
 	{
-		for (auto current = process_information; current->NextEntryOffset != 0; current = next(current))
+		for (auto current = process_information; current->NextEntryOffset != 0; current = util::next(current))
 		{
 			if (current->UniqueProcessId)
 			{
@@ -210,7 +213,7 @@ std::vector<process> process::get_process_list()
 
 bool process::raw_read(const uintptr_t address, const size_t size, void* buffer) const
 {
-	if (!is_valid(handle))
+	if (!util::is_valid(handle))
 		return false;
 
 	size_t bytes_read{};
@@ -221,7 +224,7 @@ bool process::raw_read(const uintptr_t address, const size_t size, void* buffer)
 
 bool process::raw_write(const uintptr_t address, const size_t size, const void* buffer) const
 {
-	if (!is_valid(handle))
+	if (!util::is_valid(handle))
 		return false;
 
 	size_t bytes_written{};
